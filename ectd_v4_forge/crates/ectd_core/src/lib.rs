@@ -1,6 +1,16 @@
 pub mod models;
 pub mod validation;
 
+use validation::{ValidationEngine, rules};
+
+pub fn get_standard_validator() -> ValidationEngine {
+    ValidationEngine::new()
+        .add_rule(rules::RuleEctd4_004)
+        .add_rule(rules::RuleEctd4_006)
+        .add_rule(rules::RuleEctd4_013)
+        .add_rule(rules::RuleEctd4_048)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::models::submission_unit::SubmissionUnit;
