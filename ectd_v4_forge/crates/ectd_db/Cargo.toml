@@ -1,0 +1,11 @@
+[package]
+name = "ectd_db"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sqlx.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+ectd_core.workspace = true

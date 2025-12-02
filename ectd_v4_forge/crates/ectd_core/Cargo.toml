@@ -1,0 +1,10 @@
+[package]
+name = "ectd_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+quick-xml.workspace = true

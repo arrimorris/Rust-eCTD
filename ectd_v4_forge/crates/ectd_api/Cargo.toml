@@ -1,0 +1,13 @@
+[package]
+name = "ectd_api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+ectd_core.workspace = true
+ectd_db.workspace = true

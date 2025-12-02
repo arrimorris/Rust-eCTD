@@ -1,0 +1,15 @@
+[package]
+name = "ectd_cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+uuid.workspace = true
+ dotenvy = "0.15"
+ sqlx.workspace = true
+ quick-xml.workspace = true
+ectd_core.workspace = true
+ectd_db.workspace = true
