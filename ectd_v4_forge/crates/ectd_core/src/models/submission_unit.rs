@@ -15,6 +15,14 @@ pub struct SubmissionUnit {
     #[serde(rename = "@id")]
     pub id: String,
 
+    // Rule eCTD4-033: Submission ID (The logical grouping)
+    #[serde(rename = "submissionId")]
+    pub submission_id: String,
+
+    // Rule eCTD4-013: Sequence Number (e.g., 0001)
+    #[serde(rename = "sequenceNumber")]
+    pub sequence_number: u32,
+
     // Rule eCTD4-006: Code value is required (e.g., "original-application")
     #[serde(rename = "@code")]
     pub code: String,

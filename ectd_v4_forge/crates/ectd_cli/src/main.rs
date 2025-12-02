@@ -41,6 +41,8 @@ async fn main() -> anyhow::Result<()> {
             // TODO: Create a new SubmissionUnit struct and save it
             let unit = SubmissionUnit {
                 id: uuid::Uuid::now_v7().to_string(),
+                submission_id: uuid::Uuid::now_v7().to_string(),
+                sequence_number: sequence.parse().unwrap_or(1),
                 code: "original-application".to_string(),
                 code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(), // Fake OID for example
                 context_of_use: vec![],
