@@ -22,7 +22,10 @@ impl SubmissionRepository {
         // LEVEL 1: Insert the Submission Unit Container
         // ---------------------------------------------------------
         let unit_id = Uuid::parse_str(&unit.id).unwrap_or_else(|_| Uuid::new_v4());
-        let submission_id = Uuid::parse_str(&unit.submission_id).unwrap_or_else(|_| Uuid::new_v4());
+
+        // Extract from nested structs (HL7 RPS structure)
+        let submission_id = Uuid::parse_str(&unit.submission.id).unwrap_or_else(|_| Uuid::new_v4());
+        let sequence_number = unit.submission.sequence_number.value;
 
         // Using sqlx::query! macro for compile-time verification
         sqlx::query!(
@@ -33,10 +36,10 @@ impl SubmissionRepository {
             "#,
             unit_id,
             submission_id,
-            unit.sequence_number as i32, // Rust u32 -> Postgres INTEGER
+            sequence_number as i32, // Rust u32 -> Postgres INTEGER
             unit.code,
             unit.code_system,
-            "active" // Default status for new units
+            unit.status_code
         )
         .execute(&mut *tx)
         .await?;
@@ -47,6 +50,13 @@ impl SubmissionRepository {
         for doc in &unit.documents {
             let doc_id = Uuid::parse_str(&doc.id).unwrap_or_else(|_| Uuid::new_v4());
 
+            // Map nested HL7 fields to flat SQL
+            // doc.text.reference.value -> xlink_href
+            let href = &doc.text.reference.value;
+            let checksum = &doc.text.checksum;
+            let alg = &doc.text.checksum_algorithm;
+            let title = &doc.title.value;
+
             sqlx::query!(
                 r#"
                 INSERT INTO documents
@@ -55,10 +65,10 @@ impl SubmissionRepository {
                 "#,
                 doc_id,
                 unit_id,
-                doc.href,
-                doc.checksum,
-                doc.checksum_algorithm,
-                doc.title
+                href,
+                checksum,
+                alg,
+                title
             )
             .execute(&mut *tx)
             .await?;
@@ -82,7 +92,7 @@ impl SubmissionRepository {
                     unit_id,
                     def.code,
                     "urn:oid:2.16.840.1.113883.3.989.2.1.1.1", // Standard eCTD OID or from struct
-                    val.display_name
+                    val.display_name.value
                 )
                 .execute(&mut *tx)
                 .await?;
@@ -97,8 +107,9 @@ impl SubmissionRepository {
 
             // Handle the optional document reference
             // If this CoU points to a doc, get that UUID.
+            // In v4 XML, it's doc_ref -> id -> @root
             let doc_ref_id = cou.document_reference.as_ref()
-                .map(|d| Uuid::parse_str(&d.id).unwrap_or(Uuid::nil()));
+                .map(|d| Uuid::parse_str(&d.id.root).unwrap_or(Uuid::nil()));
 
             sqlx::query!(
                 r#"
@@ -109,9 +120,9 @@ impl SubmissionRepository {
                 cou_id,
                 unit_id,
                 cou.code,
-                "urn:oid:2.16.840.1.113883.3.989.2.1.1.1", // Standard eCTD OID or from struct
+                cou.code_system,
                 cou.status_code,
-                cou.priority_number as i32,
+                cou.priority_number.value as i32,
                 doc_ref_id
             )
             .execute(&mut *tx)

@@ -1,40 +1,77 @@
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
-// The Connector: Context of Use (CoU)
-// Reference: PDF Section 4.2.5 "Context of Use"
+// 3. The Connector: Context of Use (CoU)
+// Reference: PDF Section 4.2.5
 // ---------------------------------------------------------------------------
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ContextOfUse {
-    // Rule eCTD4-021: Must be a unique UUID
     #[serde(rename = "@id")]
-    pub id: String,
+    pub id: String, // UUID
 
-    // Rule eCTD4-075: Code must be valid (e.g., matches a Keyword definition)
     #[serde(rename = "@code")]
-    pub code: String,
+    pub code: String, // What is this? (e.g. "cover-letter")
 
-    // Rule eCTD4-023: Status can only be "active" or "suspended"
+    #[serde(rename = "@codeSystem")]
+    pub code_system: String,
+
     #[serde(rename = "@statusCode")]
-    pub status_code: String,
+    pub status_code: String, // "active" or "suspended"
 
-    // Rule eCTD4-017: Priority Number is required
-    // Rule eCTD4-018: Whole number between 1 and 999999
+    // Rule eCTD4-017: Priority Number
     #[serde(rename = "priorityNumber")]
-    pub priority_number: u32,
+    pub priority_number: PriorityNumber,
 
-    // Rule eCTD4-027: Document Reference required for active CoU
+    // Link to the physical document
+    // Rule eCTD4-027: Required for active CoU
     #[serde(rename = "documentReference")]
     pub document_reference: Option<DocumentReference>,
+
+    // Lifecycle: Replacing an old CoU?
+    #[serde(rename = "relatedContextOfUse", default)]
+    pub related_context_of_use: Option<RelatedContextOfUse>,
+
+    // Keywords attached to this CoU
+    #[serde(rename = "keyword", default)]
+    pub keywords: Vec<Keyword>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PriorityNumber {
+    #[serde(rename = "@value")]
+    pub value: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DocumentReference {
+    #[serde(rename = "id")]
+    pub id: DocumentIdRef,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DocumentIdRef {
+    #[serde(rename = "@root")]
+    pub root: String, // The UUID of the <document> element
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RelatedContextOfUse {
+    #[serde(rename = "id")]
+    pub id: DocumentIdRef, // Points to the PREVIOUS CoU UUID
+
+    #[serde(rename = "@relationshipName")]
+    pub relationship_name: String, // "replaces"
 }
 
 // ---------------------------------------------------------------------------
-// The Pointer: Document Reference
-// Connects the CoU to the physical Document
+// 4. The Keywords
+// Reference: PDF Section 4.2.8
 // ---------------------------------------------------------------------------
 #[derive(Debug, Serialize, Deserialize)]
-pub struct DocumentReference {
-    // Points to the UUID of the <document> element
-    #[serde(rename = "id")]
-    pub id: String,
+pub struct Keyword {
+    #[serde(rename = "@code")]
+    pub code: String,
+
+    #[serde(rename = "@codeSystem")]
+    pub code_system: String,
 }

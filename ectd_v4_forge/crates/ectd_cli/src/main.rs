@@ -1,10 +1,14 @@
+// ectd_cli/src/main.rs
 use clap::{Parser, Subcommand};
-use ectd_core::models::submission_unit::SubmissionUnit;
-// Note: In a real implementation, we would import the logic to run validation or DB ops.
+use dotenvy::dotenv;
+use sqlx::postgres::PgPoolOptions;
+use std::env;
+
+mod commands;
 
 #[derive(Parser)]
-#[command(name = "ectd_v4_forge")]
-#[command(about = "A tool for eCTD v4.0 Submission Management", long_about = None)]
+#[command(name = "ectd_forge")]
+#[command(about = "Open Source eCTD v4.0 Toolchain", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -12,44 +16,29 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Validates an eCTD v4.0 XML file
-    Validate {
-        /// Path to the submissionunit.xml file
-        #[arg(value_name = "FILE")]
-        file: String,
-    },
-    /// Initializes a new submission unit
-    Init {
-        /// The sequence number (e.g., 0001)
-        #[arg(short, long, default_value = "0001")]
-        sequence: String,
-    },
+    /// Ingest a submissionunit.xml file into the database
+    Ingest(commands::ingest::IngestArgs),
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Load environment variables (.env)
+    dotenv().ok();
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set in .env");
+
+    // 2. Connect to the Brain (Postgres)
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&database_url)
+        .await?;
+
+    // 3. Parse arguments and route to the correct command
     let cli = Cli::parse();
 
-    match &cli.command {
-        Commands::Validate { file } => {
-            println!("Validating file: {}", file);
-            // TODO: Load XML and run validation engine
-            println!("(Mock) Validation Passed for {}", file);
-        }
-        Commands::Init { sequence } => {
-            println!("Initializing new submission sequence: {}", sequence);
-            // TODO: Create a new SubmissionUnit struct and save it
-            let unit = SubmissionUnit {
-                id: uuid::Uuid::now_v7().to_string(),
-                submission_id: uuid::Uuid::now_v7().to_string(),
-                sequence_number: sequence.parse().unwrap_or(1),
-                code: "original-application".to_string(),
-                code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(), // Fake OID for example
-                context_of_use: vec![],
-                documents: vec![],
-                keyword_definitions: None,
-            };
-            println!("Created Unit with ID: {}", unit.id);
+    match cli.command {
+        Commands::Ingest(args) => {
+            commands::ingest::execute(pool, args).await?;
         }
     }
 

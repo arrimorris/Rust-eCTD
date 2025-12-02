@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<submissionUnit xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="urn:hl7-org:v3 ../../schema/rps.xsd"
+    id="12345678-1234-1234-1234-123456789012"
+    code="original-application" codeSystem="2.16.840.1.113883.3.989.2.2.1"
+    statusCode="active">
+
+    <submission id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" code="seq-0001" codeSystem="2.16.840.1.113883.3.989.2.2.1">
+        <sequenceNumber value="0001"/>
+    </submission>
+
+    <application id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" code="nda" codeSystem="2.16.840.1.113883.3.989.2.2.1">
+        <code code="123456" codeSystem="2.16.840.1.113883.3.989.2.2.1"/>
+    </application>
+
+    <applicant>
+        <sponsoringOrganization>
+            <name>Acme Pharmaceuticals</name>
+        </sponsoringOrganization>
+    </applicant>
+
+    <contextOfUse id="cccccccc-cccc-cccc-cccc-cccccccccccc" code="cover-letter" codeSystem="2.16.840.1.113883.3.989.2.2.1" statusCode="active">
+        <priorityNumber value="1"/>
+        <documentReference>
+            <id root="dddddddd-dddd-dddd-dddd-dddddddddddd"/>
+        </documentReference>
+    </contextOfUse>
+
+    <document id="dddddddd-dddd-dddd-dddd-dddddddddddd">
+        <title value="Cover Letter"/>
+        <text integrityCheck="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" integrityCheckAlgorithm="SHA256" mediaType="application/pdf">
+            <reference value="m1/us/cover.pdf"/>
+        </text>
+    </document>
+
+    <keywordDefinition code="my-term" codeSystem="2.16.840.1.113883.3.989.2.2.1">
+        <value>
+            <item code="my-term" displayName="My Custom Term">
+                <displayName value="My Custom Term"/>
+            </item>
+        </value>
+    </keywordDefinition>
+</submissionUnit>

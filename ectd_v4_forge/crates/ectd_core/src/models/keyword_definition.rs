@@ -1,31 +1,38 @@
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
-// The Vocabulary: Keyword Definition
-// Reference: PDF Section 4.2.14 "Keyword Definition"
+// 6. Keyword Definitions (Custom Vocabulary)
+// Reference: PDF Section 4.2.14
 // ---------------------------------------------------------------------------
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KeywordDefinition {
-    // Rule eCTD4-052: Code is required
     #[serde(rename = "@code")]
     pub code: String,
 
-    // Rule eCTD4-056: Value is required
+    #[serde(rename = "@codeSystem")]
+    pub code_system: String,
+
     #[serde(rename = "value")]
-    pub value: KeywordValue,
+    pub value: KeywordDefinitionValue,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct KeywordValue {
-     #[serde(rename = "item")]
-     pub item: KeywordItem,
+pub struct KeywordDefinitionValue {
+    #[serde(rename = "item")]
+    pub item: KeywordDefinitionItem,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct KeywordItem {
-     #[serde(rename = "@code")]
-     pub code: String,
+pub struct KeywordDefinitionItem {
+    #[serde(rename = "@code")]
+    pub code: String,
 
-     #[serde(rename = "displayName")]
-     pub display_name: String,
+    #[serde(rename = "displayName")]
+    pub display_name: DisplayName,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DisplayName {
+    #[serde(rename = "@value")]
+    pub value: String,
 }
