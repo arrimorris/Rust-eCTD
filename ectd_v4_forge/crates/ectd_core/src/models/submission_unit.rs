@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use quick_xml::se::to_string;
+use anyhow::Result;
 
 // ---------------------------------------------------------------------------
 // 1. The Root Container: <submissionUnit>
@@ -70,6 +72,18 @@ pub struct SubmissionUnit {
     // Reference: PDF 4.2.14
     #[serde(rename = "keywordDefinition", default)]
     pub keyword_definitions: Option<Vec<KeywordDefinition>>,
+}
+
+impl SubmissionUnit {
+    /// Serializes the struct to a canonical eCTD v4.0 XML string
+    /// Includes the correct XML declaration and encoding.
+    pub fn to_xml(&self) -> Result<String> {
+        let xml_body = to_string(&self)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize SubmissionUnit: {}", e))?;
+
+        // The eCTD standard requires UTF-8 and version 1.0
+        Ok(format!(r#"<?xml version="1.0" encoding="UTF-8"?>{}"#, xml_body))
+    }
 }
 
 // ---------------------------------------------------------------------------

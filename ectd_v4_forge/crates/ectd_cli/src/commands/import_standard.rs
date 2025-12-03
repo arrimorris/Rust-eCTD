@@ -1,5 +1,5 @@
 use clap::Args;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
