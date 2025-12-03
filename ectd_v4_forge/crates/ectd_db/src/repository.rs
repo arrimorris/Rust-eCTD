@@ -135,4 +135,158 @@ impl SubmissionRepository {
 
         Ok(unit_id)
     }
+
+    /// Reconstructs a full SubmissionUnit from the relational database
+    pub async fn get_submission(&self, id: Uuid) -> Result<SubmissionUnit, sqlx::Error> {
+        // 1. Fetch the Root (Submission Unit)
+        let unit_rec = sqlx::query!(
+            r#"
+            SELECT id, submission_id, sequence_number, code, code_system, status_code, created_at
+            FROM submission_units
+            WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        // 2. Fetch All Documents for this Unit
+        let docs_recs = sqlx::query!(
+            r#"
+            SELECT id, xlink_href, checksum, checksum_algorithm, title, media_type
+            FROM documents
+            WHERE submission_unit_id = $1
+            "#,
+            id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Map DB Documents to Rust Structs
+        let documents: Vec<ectd_core::models::document::Document> = docs_recs
+            .into_iter()
+            .map(|r| ectd_core::models::document::Document {
+                id: r.id.to_string(),
+                title: ectd_core::models::document::DocumentTitle { value: r.title },
+                text: ectd_core::models::document::DocumentText {
+                    reference: ectd_core::models::document::DocumentReferencePath { value: r.xlink_href },
+                    checksum: r.checksum,
+                    checksum_algorithm: r.checksum_algorithm.unwrap_or_else(|| "SHA256".to_string()),
+                    media_type: r.media_type.unwrap_or_else(|| "application/pdf".to_string()),
+                },
+            })
+            .collect();
+
+        // 3. Fetch All Contexts of Use
+        let cou_recs = sqlx::query!(
+            r#"
+            SELECT id, code, code_system, status_code, priority_number, document_reference_id
+            FROM contexts_of_use
+            WHERE submission_unit_id = $1
+            "#,
+            id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Map DB Contexts to Rust Structs
+        let context_of_use: Vec<ectd_core::models::context_of_use::ContextOfUse> = cou_recs
+            .into_iter()
+            .map(|r| ectd_core::models::context_of_use::ContextOfUse {
+                id: r.id.to_string(),
+                code: r.code,
+                code_system: r.code_system,
+                status_code: r.status_code,
+                priority_number: ectd_core::models::context_of_use::PriorityNumber {
+                    value: r.priority_number as u32,
+                },
+                document_reference: r.document_reference_id.map(|doc_id| {
+                    ectd_core::models::context_of_use::DocumentReference {
+                        id: ectd_core::models::context_of_use::DocumentIdRef {
+                            root: doc_id.to_string(),
+                        },
+                    }
+                }),
+                related_context_of_use: None, // Not yet implemented in DB schema
+                keywords: vec![],             // To be implemented with join table
+            })
+            .collect();
+
+        // 4. Fetch Keyword Definitions
+        let kw_recs = sqlx::query!(
+            r#"
+            SELECT code, code_system, display_name
+            FROM keyword_definitions
+            WHERE submission_unit_id = $1
+            "#,
+            id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let keyword_definitions: Vec<ectd_core::models::keyword_definition::KeywordDefinition> = kw_recs
+            .into_iter()
+            .map(|r| ectd_core::models::keyword_definition::KeywordDefinition {
+                code: r.code.clone(),
+                code_system: r.code_system,
+                value: ectd_core::models::keyword_definition::KeywordDefinitionValue {
+                    item: ectd_core::models::keyword_definition::KeywordDefinitionItem {
+                        code: r.code,
+                        display_name: ectd_core::models::keyword_definition::DisplayName {
+                            value: r.display_name,
+                        },
+                    },
+                },
+            })
+            .collect();
+
+        // Wrap keyword_definitions in Option
+        let keyword_definitions = if keyword_definitions.is_empty() {
+            None
+        } else {
+            Some(keyword_definitions)
+        };
+
+        // 5. Assemble the Titan
+        // Note: We fill missing DB fields with placeholders to ensure valid JSON output
+        Ok(SubmissionUnit {
+            xmlns: "urn:hl7-org:v3".to_string(),
+            xmlns_xsi: None,
+            schema_location: None,
+            id: unit_rec.id.to_string(),
+            code: unit_rec.code,
+            code_system: unit_rec.code_system,
+            status_code: unit_rec.status_code,
+
+            // Reconstruct Submission Block
+            submission: ectd_core::models::submission_unit::Submission {
+                id: unit_rec.submission_id.to_string(),
+                code: "seq-0001".to_string(), // Placeholder until we store submission code
+                code_system: "urn:oid:submission-code-system".to_string(),
+                sequence_number: ectd_core::models::submission_unit::SequenceNumber {
+                    value: unit_rec.sequence_number as u32,
+                },
+            },
+
+            // Placeholders for Application/Applicant (Not yet in DB)
+            application: ectd_core::models::submission_unit::Application {
+                id: Uuid::nil().to_string(),
+                code: "placeholder".to_string(),
+                code_system: "urn:oid:placeholder".to_string(),
+                application_number: ectd_core::models::submission_unit::ApplicationNumber {
+                    code: "000000".to_string(),
+                    code_system: "urn:oid:placeholder".to_string(),
+                },
+            },
+            applicant: ectd_core::models::submission_unit::Applicant {
+                sponsoring_organization: ectd_core::models::submission_unit::SponsoringOrganization {
+                    name: "Stored in DB (Placeholder)".to_string(),
+                },
+            },
+
+            context_of_use,
+            documents,
+            keyword_definitions,
+        })
+    }
 }
