@@ -1,0 +1,3 @@
+domain,var_name,domain_name,variable_name,cdash_ig_variable,label,type,format,code_list,core,pre_text,notes,sdtm_target,sdtm_ig_variable,sdtm_label
+AE,AE,Adverse Events,AE.AETERM,AETERM,Reported Term for the Adverse Event,Char,,,,,Reported Term for the Adverse Event,AETERM,AETERM,Reported Term for the Adverse Event
+AE,AE,Adverse Events,AE.AESEV,AESEV,Severity/Intensity,Char,,CL.AESEV,,,Severity/Intensity,AESEV,AESEV,Severity/Intensity

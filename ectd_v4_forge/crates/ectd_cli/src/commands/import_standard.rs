@@ -41,19 +41,23 @@ pub fn run(args: ImportStandardArgs) -> anyhow::Result<()> {
     // We group everything by Domain (e.g., "AE", "DM")
     let mut domains: HashMap<String, DomainMap> = HashMap::new();
 
+    // Dynamically find column indices from headers
+    let headers = rdr.headers()?;
+    let domain_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("Domain") || h.eq_ignore_ascii_case("Domain Code")).unwrap_or(0);
+    // CDASHIG Variable / Variable Name
+    let cdash_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("CDASHIG Variable") || h.eq_ignore_ascii_case("Variable Name") || h.eq_ignore_ascii_case("var_name")).unwrap_or(4);
+    // SDTMIG Target / Target
+    let sdtm_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("SDTMIG Target") || h.eq_ignore_ascii_case("SDTM Target") || h.eq_ignore_ascii_case("sdtm_target")).unwrap_or(12);
+    // Label
+    let label_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("Label") || h.eq_ignore_ascii_case("Description")).unwrap_or(5);
+
     for result in rdr.records() {
         let record = result?;
         
-        // Based on your CSV structure:
-        // Col 2: Domain (e.g., "AG")
-        // Col 5: CDASHIG Variable (e.g., "STUDYID")
-        // Col 13: SDTMIG Target (e.g., "STUDYID")
-        // Col 6: Label/Notes
-        
-        let domain_code = record.get(2).unwrap_or("Unknown").to_string();
-        let cdash_var = record.get(5).unwrap_or("").to_string();
-        let sdtm_target = record.get(13).unwrap_or("").to_string();
-        let label = record.get(6).unwrap_or("").to_string();
+        let domain_code = record.get(domain_idx).unwrap_or("Unknown").to_string();
+        let cdash_var = record.get(cdash_idx).unwrap_or("").to_string();
+        let sdtm_target = record.get(sdtm_idx).unwrap_or("").to_string();
+        let label = record.get(label_idx).unwrap_or("").to_string();
 
         // Skip if there is no SDTM target (internal CDASH-only fields)
         if sdtm_target.is_empty() {
@@ -69,7 +73,7 @@ pub fn run(args: ImportStandardArgs) -> anyhow::Result<()> {
         entry.variables.push(VariableMap {
             cdash: cdash_var,
             sdtm: sdtm_target,
-            role: "Imported".to_string(), // We could parse Col 11 ("Core") for this
+            role: "Imported".to_string(),
             notes: label,
         });
     }
