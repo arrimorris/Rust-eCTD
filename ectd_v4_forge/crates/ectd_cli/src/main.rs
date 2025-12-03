@@ -27,6 +27,9 @@ enum Commands {
 
     /// Forge a SAS XPT v5 dataset from CSV
     ForgeData(commands::forge_data::ForgeDataArgs),
+
+    /// Export a submission package from the database to disk
+    Export(commands::export::ExportArgs),
 }
 
 #[tokio::main]
@@ -58,6 +61,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::ForgeData(args) => {
             commands::forge_data::run(args)?;
+        }
+        Commands::Export(args) => {
+            let database_url = env::var("DATABASE_URL")
+                .expect("DATABASE_URL must be set in .env");
+
+            let pool = PgPoolOptions::new()
+                .max_connections(5)
+                .connect(&database_url)
+                .await?;
+            commands::export::execute(pool, args).await?;
         }
     }
 
