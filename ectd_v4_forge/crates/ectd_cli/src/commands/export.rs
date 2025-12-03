@@ -9,6 +9,8 @@ use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::{Client, config::Region};
 use sha2::{Sha256, Digest};
 use crate::config::Config;
+use futures::stream::{self, StreamExt}; // For parallelism
+use tokio::io::AsyncWriteExt; // For async file writing
 
 #[derive(Debug, Args)]
 pub struct ExportArgs {
@@ -48,40 +50,64 @@ pub async fn execute(pool: PgPool, config: Config, args: ExportArgs) -> Result<(
     let s3_client = Client::from_conf(s3_config);
     let bucket_name = config.s3_bucket.clone();
 
-    // Track files for the manifest (sha256.txt)
+    // Track files for the manifest (sha256.txt) - Protected by Mutex/Channel or handled via collection
+    // Since we stream and collect results, we can build the manifest from the results.
+
+    // 4. Download Physical Files (Parallelized)
+    println!("⬇️  Downloading {} files concurrently...", unit.documents.len());
+
+    // Create a stream of async tasks
+    let downloads = stream::iter(unit.documents.iter())
+        .map(|doc| {
+            let client = s3_client.clone();
+            let bucket = bucket_name.clone();
+            let out_dir = args.output.clone();
+            let doc_id = doc.id.clone();
+            let ref_path = doc.text.reference.value.clone();
+
+            async move {
+                let rel_path = Path::new(&ref_path);
+                let full_out_path = out_dir.join(rel_path);
+
+                if let Some(parent) = full_out_path.parent() {
+                    fs::create_dir_all(parent)?; // Sync fs is okay for directory creation
+                }
+
+                // S3 Get
+                let mut stream = client
+                    .get_object()
+                    .bucket(bucket)
+                    .key(&doc_id)
+                    .send()
+                    .await?
+                    .body;
+
+                let mut file = tokio::fs::File::create(&full_out_path).await?;
+
+                while let Some(bytes) = stream.try_next().await? {
+                    file.write_all(&bytes).await?;
+                }
+
+                // Return path and relative string for hashing
+                Ok::<(PathBuf, String), Box<dyn std::error::Error + Send + Sync>>((full_out_path, ref_path))
+            }
+        })
+        .buffer_unordered(10); // Process 10 concurrent downloads
+
+    // Collect results
+    let results = downloads.collect::<Vec<_>>().await;
+
+    // Process results for manifest
     let mut manifest_entries: Vec<(String, String)> = Vec::new();
 
-    // 4. Download Physical Files
-    for doc in &unit.documents {
-        let rel_path = Path::new(&doc.text.reference.value);
-        let full_out_path = args.output.join(rel_path);
-
-        // Ensure parent folder exists (e.g. m1/us/)
-        if let Some(parent) = full_out_path.parent() {
-            fs::create_dir_all(parent)?;
+    for res in results {
+        match res {
+            Ok((path, rel_str)) => {
+                let hash = calculate_file_hash(&path)?; // CPU-bound hashing done synchronously
+                manifest_entries.push((hash, rel_str.replace("\\", "/")));
+            }
+            Err(e) => return Err(format!("Download failed: {}", e).into()),
         }
-
-        println!("⬇️  Downloading: {} (ID: {})", doc.text.reference.value, doc.id);
-
-        let mut file = File::create(&full_out_path)?;
-
-        // Stream from S3
-        let mut stream = s3_client
-            .get_object()
-            .bucket(&bucket_name)
-            .key(&doc.id) // Key is the UUID
-            .send()
-            .await?
-            .body;
-
-        // Write stream to disk
-        while let Some(bytes) = stream.try_next().await? {
-            file.write_all(&bytes)?;
-        }
-
-        // Calculate Hash for Manifest (Rule eCTD4-062)
-        let hash = calculate_file_hash(&full_out_path)?;
-        manifest_entries.push((hash, doc.text.reference.value.clone()));
     }
 
     // 5. Generate submissionunit.xml
@@ -97,34 +123,23 @@ pub async fn execute(pool: PgPool, config: Config, args: ExportArgs) -> Result<(
     manifest_entries.push((xml_hash, "submissionunit.xml".to_string()));
 
     // 6. Generate sha256.txt Manifest
-    // Format: "hash  filename" (standard sha256sum format)
     println!("Calculated Hashes for Manifest:");
     let manifest_path = args.output.join("sha256.txt");
     let mut manifest_file = BufWriter::new(File::create(manifest_path)?);
 
     for (hash, filename) in manifest_entries {
-        // eCTD usually expects forward slashes even on Windows
-        let standardized_name = filename.replace("\\", "/");
-        writeln!(manifest_file, "{}  {}", hash, standardized_name)?;
+        writeln!(manifest_file, "{}  {}", hash, filename)?;
     }
 
     println!("🎉 Export Complete! Package ready at: {:?}", args.output);
     Ok(())
 }
 
+// Helper: Synchronous Hashing (CPU bound)
 fn calculate_file_hash(path: &Path) -> std::io::Result<String> {
     let mut file = File::open(path)?;
     let mut hasher = Sha256::new();
-    let mut buffer = [0; 1024];
-
-    loop {
-        let count = std::io::Read::read(&mut file, &mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        hasher.update(&buffer[..count]);
-    }
-
+    std::io::copy(&mut file, &mut hasher)?;
     let hash = hasher.finalize();
     Ok(hex::encode(hash))
 }
