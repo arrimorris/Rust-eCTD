@@ -1,10 +1,9 @@
 // ectd_cli/src/main.rs
 use clap::{Parser, Subcommand};
-use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
-use std::env;
 
-mod commands;
+use ectd_cli::commands;
+use ectd_cli::config::Config;
 
 #[derive(Parser)]
 #[command(name = "ectd_forge")]
@@ -34,23 +33,20 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Load environment variables (.env)
-    dotenv().ok();
+    // 1. Load Config (Fails fast if invalid)
+    let config = Config::from_env()?;
 
     // 3. Parse arguments and route to the correct command
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Ingest(args) => {
-            let database_url = env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set in .env");
-
             // 2. Connect to the Brain (Postgres)
             let pool = PgPoolOptions::new()
                 .max_connections(5)
-                .connect(&database_url)
+                .connect(&config.database_url)
                 .await?;
-            commands::ingest::execute(pool, args).await?;
+            commands::ingest::execute(pool, config, args).await?;
         }
         Commands::Validate(args) => {
             // Note: Validate doesn't need the 'pool', keeping it pure logic.
@@ -63,14 +59,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::forge_data::run(args)?;
         }
         Commands::Export(args) => {
-            let database_url = env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set in .env");
-
             let pool = PgPoolOptions::new()
                 .max_connections(5)
-                .connect(&database_url)
+                .connect(&config.database_url)
                 .await?;
-            commands::export::execute(pool, args).await?;
+            commands::export::execute(pool, config, args).await?;
         }
     }
 

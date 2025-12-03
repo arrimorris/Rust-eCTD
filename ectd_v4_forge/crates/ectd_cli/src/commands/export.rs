@@ -8,7 +8,7 @@ use ectd_db::repository::SubmissionRepository;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::{Client, config::Region};
 use sha2::{Sha256, Digest};
-use quick_xml::se::to_string;
+use crate::config::Config;
 
 #[derive(Debug, Args)]
 pub struct ExportArgs {
@@ -21,7 +21,7 @@ pub struct ExportArgs {
     pub output: PathBuf,
 }
 
-pub async fn execute(pool: PgPool, args: ExportArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn execute(pool: PgPool, config: Config, args: ExportArgs) -> Result<(), Box<dyn std::error::Error>> {
     println!("📦 Starting Export for Submission: {}", args.id);
     println!("📂 Output Directory: {:?}", args.output);
 
@@ -39,14 +39,14 @@ pub async fn execute(pool: PgPool, args: ExportArgs) -> Result<(), Box<dyn std::
     fs::create_dir_all(&args.output)?;
 
     // 3. Setup S3 Client (The Vault)
-    let region_provider = RegionProviderChain::default_provider().or_else(Region::new("us-east-1"));
-    let config = aws_config::from_env().region(region_provider).load().await;
-    let s3_config = aws_sdk_s3::config::Builder::from(&config)
+    let region_provider = RegionProviderChain::default_provider().or_else(Region::new(config.s3_region.clone()));
+    let aws_config = aws_config::from_env().region(region_provider).load().await;
+    let s3_config = aws_sdk_s3::config::Builder::from(&aws_config)
         .force_path_style(true)
-        .endpoint_url(std::env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string()))
+        .endpoint_url(&config.s3_endpoint)
         .build();
     let s3_client = Client::from_conf(s3_config);
-    let bucket_name = "ectd-documents";
+    let bucket_name = config.s3_bucket.clone();
 
     // Track files for the manifest (sha256.txt)
     let mut manifest_entries: Vec<(String, String)> = Vec::new();
@@ -68,7 +68,7 @@ pub async fn execute(pool: PgPool, args: ExportArgs) -> Result<(), Box<dyn std::
         // Stream from S3
         let mut stream = s3_client
             .get_object()
-            .bucket(bucket_name)
+            .bucket(&bucket_name)
             .key(&doc.id) // Key is the UUID
             .send()
             .await?
@@ -86,11 +86,8 @@ pub async fn execute(pool: PgPool, args: ExportArgs) -> Result<(), Box<dyn std::
 
     // 5. Generate submissionunit.xml
     println!("📝 Generating submissionunit.xml...");
-    let xml_string = to_string(&unit)
+    let final_xml = unit.to_xml()
         .map_err(|e| format!("XML Serialization Failed: {}", e))?;
-
-    // Prepend XML declaration (quick-xml doesn't add it by default)
-    let final_xml = format!(r#"<?xml version="1.0" encoding="UTF-8"?>{}"#, xml_string);
 
     let xml_path = args.output.join("submissionunit.xml");
     fs::write(&xml_path, &final_xml)?;
@@ -118,7 +115,16 @@ pub async fn execute(pool: PgPool, args: ExportArgs) -> Result<(), Box<dyn std::
 fn calculate_file_hash(path: &Path) -> std::io::Result<String> {
     let mut file = File::open(path)?;
     let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher)?;
+    let mut buffer = [0; 1024];
+
+    loop {
+        let count = std::io::Read::read(&mut file, &mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        hasher.update(&buffer[..count]);
+    }
+
     let hash = hasher.finalize();
     Ok(hex::encode(hash))
 }
