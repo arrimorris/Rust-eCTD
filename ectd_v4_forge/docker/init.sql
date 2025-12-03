@@ -1,5 +1,24 @@
+-- 0. Create User and Database (Idempotent)
+DO
+$do$
+BEGIN
+   IF NOT EXISTS (
+      SELECT FROM pg_catalog.pg_roles
+      WHERE  rolname = 'ectd_admin') THEN
+
+      -- TODO: Remove hardcoded password before production release
+      CREATE ROLE ectd_admin LOGIN PASSWORD 'secure_password_123';
+      GRANT ALL PRIVILEGES ON DATABASE ectd_v4 TO ectd_admin;
+      ALTER DATABASE ectd_v4 OWNER TO ectd_admin;
+   END IF;
+END
+$do$;
+
 -- 1. Enable UUIDv7 extension (Native in PG18, or via pg_uuidv7 in older versions)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Grant usage on schema to the new user
+GRANT ALL ON SCHEMA public TO ectd_admin;
 
 -- ========================================================
 -- LEVEL 1: The Container (Submission Unit)
