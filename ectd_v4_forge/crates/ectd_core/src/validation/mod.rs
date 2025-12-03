@@ -1,35 +1,44 @@
 use crate::models::submission_unit::SubmissionUnit;
+use serde::Serialize;
 
-pub trait ValidationRule {
-    fn check(&self, unit: &SubmissionUnit) -> Result<(), ValidationError>;
-    fn error_code(&self) -> String;
-}
+pub mod rules;
 
-#[derive(Debug)]
+// The structure of a failure
+#[derive(Debug, Serialize, Clone)]
 pub struct ValidationError {
-    pub code: String,
-    pub severity: String,
-    pub message: String,
+    pub code: String,      // e.g., "eCTD4-013"
+    pub severity: String,  // "High Error", "Warning"
+    pub message: String,   // "Sequence Number must be between 1 and 999999"
+    pub target_id: Option<String>, // Which element failed?
 }
 
-// Example Implementation of Rule eCTD4-004 from your PDF
-// "Submission Unit id root must be a UUID"
-pub struct CheckSubmissionUnitUUID;
+// The contract every rule must fulfill
+pub trait ValidationRule {
+    fn check(&self, unit: &SubmissionUnit) -> Vec<ValidationError>;
+    fn rule_id(&self) -> &str;
+}
 
-impl ValidationRule for CheckSubmissionUnitUUID {
-    fn error_code(&self) -> String {
-        "eCTD4-004".to_string()
+// The Engine that holds the registry of all rules
+pub struct ValidationEngine {
+    rules: Vec<Box<dyn ValidationRule>>,
+}
+
+impl ValidationEngine {
+    pub fn new() -> Self {
+        Self { rules: Vec::new() }
     }
 
-    fn check(&self, unit: &SubmissionUnit) -> Result<(), ValidationError> {
-        // Use the uuid crate to parse the string
-        match uuid::Uuid::parse_str(&unit.id) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ValidationError {
-                code: self.error_code(),
-                severity: "High Error".to_string(), // From PDF source [50]
-                message: "Submission Unit id root must be a UUID".to_string(),
-            }),
+    pub fn add_rule<R: ValidationRule + 'static>(mut self, rule: R) -> Self {
+        self.rules.push(Box::new(rule));
+        self
+    }
+
+    pub fn run(&self, unit: &SubmissionUnit) -> Vec<ValidationError> {
+        let mut errors = Vec::new();
+        for rule in &self.rules {
+            let mut rule_errors = rule.check(unit);
+            errors.append(&mut rule_errors);
         }
+        errors
     }
 }
