@@ -21,6 +21,12 @@ enum Commands {
 
     /// Validate a submissionunit.xml against FDA/ICH rules
     Validate(commands::validate::ValidateArgs),
+
+    /// Import CDISC standards from CSV
+    ImportStandard(commands::import_standard::ImportStandardArgs),
+
+    /// Forge a SAS XPT v5 dataset from CSV
+    ForgeData(commands::forge_data::ForgeDataArgs),
 }
 
 #[tokio::main]
@@ -46,6 +52,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Validate(args) => {
             // Note: Validate doesn't need the 'pool', keeping it pure logic.
             commands::validate::execute(args).await?;
+        }
+        Commands::ImportStandard(args) => {
+            commands::import_standard::run(args)?;
+        }
+        Commands::ForgeData(args) => {
+            commands::forge_data::run(args)?;
         }
     }
 
