@@ -8,6 +8,7 @@ use ectd_db::repository::SubmissionRepository;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::{Client, config::Region};
 use aws_sdk_s3::primitives::ByteStream; // For streaming uploads
+use crate::config::Config;
 
 #[derive(Debug, Args)]
 pub struct IngestArgs {
@@ -20,22 +21,22 @@ pub struct IngestArgs {
     pub submission_id: Option<String>,
 }
 
-pub async fn execute(pool: PgPool, args: IngestArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn execute(pool: PgPool, config: Config, args: IngestArgs) -> Result<(), Box<dyn std::error::Error>> {
     println!("🚀 Starting ingestion for: {:?}", args.file);
 
     // 0. SETUP S3 CLIENT (MinIO)
     // We load credentials from the environment (standard AWS_ACCESS_KEY_ID style)
     // or fallback to our docker defaults if running locally.
-    let region_provider = RegionProviderChain::default_provider().or_else(Region::new("us-east-1"));
-    let config = aws_config::from_env().region(region_provider).load().await;
+    let region_provider = RegionProviderChain::default_provider().or_else(Region::new(config.s3_region.clone()));
+    let aws_config = aws_config::from_env().region(region_provider).load().await;
 
     // We must force "Path Style" addressing for MinIO (localhost compatibility)
-    let s3_config_builder = aws_sdk_s3::config::Builder::from(&config)
+    let s3_config_builder = aws_sdk_s3::config::Builder::from(&aws_config)
         .force_path_style(true)
-        .endpoint_url(std::env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://localhost:9000".to_string()));
+        .endpoint_url(&config.s3_endpoint);
 
     let s3_client = Client::from_conf(s3_config_builder.build());
-    let bucket_name = "ectd-documents";
+    let bucket_name = config.s3_bucket.clone();
 
     // 1. READ THE XML FILE
     let xml_content = fs::read_to_string(&args.file)
@@ -75,7 +76,7 @@ pub async fn execute(pool: PgPool, args: IngestArgs) -> Result<(), Box<dyn std::
             Ok(b) => {
                 s3_client
                     .put_object()
-                    .bucket(bucket_name)
+                    .bucket(&bucket_name)
                     .key(s3_key)
                     .body(b)
                     .content_type("application/pdf") // Force PDF mime type
