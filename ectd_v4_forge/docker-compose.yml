@@ -9,6 +9,7 @@ services:
     container_name: ectd_db
     restart: always
     environment:
+      # TODO: Remove default passwords before production release
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-ectd_password}
       POSTGRES_DB: ${DB_NAME:-ectd_v4}

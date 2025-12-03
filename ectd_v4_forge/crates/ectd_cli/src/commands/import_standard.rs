@@ -49,7 +49,7 @@ pub fn run(args: ImportStandardArgs) -> anyhow::Result<()> {
     // SDTMIG Target / Target
     let sdtm_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("SDTMIG Target") || h.eq_ignore_ascii_case("SDTM Target") || h.eq_ignore_ascii_case("sdtm_target")).unwrap_or(12);
     // Label
-    let label_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("Label") || h.eq_ignore_ascii_case("Description")).unwrap_or(5);
+    let label_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("Label") || h.eq_ignore_ascii_case("Description") || h.eq_ignore_ascii_case("CDASHIG Variable Label")).unwrap_or(5);
 
     for result in rdr.records() {
         let record = result?;
