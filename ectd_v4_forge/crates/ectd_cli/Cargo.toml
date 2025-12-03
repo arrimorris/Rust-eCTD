@@ -1,15 +1,19 @@
 [package]
 name = "ectd_cli"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 clap.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 uuid.workspace = true
- dotenvy = "0.15"
- sqlx.workspace = true
- quick-xml.workspace = true
+dotenvy = "0.15"
+sqlx.workspace = true
+quick-xml.workspace = true
 ectd_core.workspace = true
 ectd_db.workspace = true
+
+# New additions for S3/MinIO
+aws-config = { version = "1.1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.14"
