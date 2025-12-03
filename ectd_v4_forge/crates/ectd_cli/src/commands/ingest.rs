@@ -8,6 +8,7 @@ use ectd_db::repository::SubmissionRepository;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::{Client, config::Region};
 use aws_sdk_s3::primitives::ByteStream; // For streaming uploads
+use aws_sdk_s3::error::SdkError;
 use crate::config::Config;
 
 #[derive(Debug, Args)]
@@ -37,6 +38,9 @@ pub async fn execute(pool: PgPool, config: Config, args: IngestArgs) -> Result<(
 
     let s3_client = Client::from_conf(s3_config_builder.build());
     let bucket_name = config.s3_bucket.clone();
+
+    // 0.5. IDEMPOTENT INITIALIZATION (Ensure Bucket Exists)
+    ensure_bucket_exists(&s3_client, &bucket_name).await?;
 
     // 1. READ THE XML FILE
     let xml_content = fs::read_to_string(&args.file)
@@ -106,4 +110,35 @@ pub async fn execute(pool: PgPool, config: Config, args: IngestArgs) -> Result<(
     }
 
     Ok(())
+}
+
+/// Helper: Checks if the S3 bucket exists, creates it if not.
+async fn ensure_bucket_exists(client: &Client, bucket: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Check if bucket exists using HeadBucket
+    let head_result = client.head_bucket().bucket(bucket).send().await;
+
+    match head_result {
+        Ok(_) => {
+            println!("✅ S3 Bucket '{}' exists.", bucket);
+            Ok(())
+        },
+        Err(SdkError::ServiceError(err)) if err.err().is_not_found() => {
+            println!("⚠️  S3 Bucket '{}' not found. Creating it...", bucket);
+            client.create_bucket().bucket(bucket).send().await
+                .map_err(|e| format!("Failed to create bucket: {}", e))?;
+            println!("✅ S3 Bucket created successfully.");
+            Ok(())
+        },
+        Err(e) => {
+            // It might fail for other reasons (Auth, Connection), but we escalate those.
+            // Note: MinIO might return 404 differently than AWS S3 standard in some versions,
+            // but the SDK handles checking for "NotFound".
+            // If the error isn't explicitly "NotFound", we try creating it anyway?
+            // No, that risks errors. Better to fail fast if it's a permission issue.
+            // Actually, for a robust bootstrap, if we can't head it, we assume we need to create it OR we panic.
+            // Let's print the error and try creation ONLY if it looks like a 404.
+            // The `is_not_found()` check above is the correct way.
+            Err(format!("Failed to check bucket existence: {}", e).into())
+        }
+    }
 }

@@ -37,21 +37,6 @@ services:
     volumes:
       - minio_data:/data
 
-  # --------------------------------------------------------------------------
-  # THE HELPER: Create Buckets
-  # --------------------------------------------------------------------------
-  createbuckets:
-    image: minio/mc
-    depends_on:
-      - storage
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set myminio http://storage:9000 ${MINIO_USER:-minio_admin} ${MINIO_PASSWORD:-minio_secret};
-      /usr/bin/mc mb myminio/ectd-documents;
-      /usr/bin/mc anonymous set download myminio/ectd-documents;
-      exit 0;
-      "
-
 volumes:
   pg_data:
   minio_data:
