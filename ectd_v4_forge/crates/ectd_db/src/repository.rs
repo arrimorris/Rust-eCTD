@@ -23,30 +23,43 @@ impl SubmissionRepository {
         let mut tx = self.pool.begin().await?;
 
         // ---------------------------------------------------------
-        // LEVEL 1: Insert the Submission Unit Container
+        // LEVEL 1: Insert the Submission Unit Container (Updated)
         // ---------------------------------------------------------
         let unit_id = Uuid::parse_str(&unit.id).unwrap_or_else(|_| Uuid::new_v4());
         let submission_id = Uuid::parse_str(&unit.submission.id).unwrap_or_else(|_| Uuid::new_v4());
         let sequence_number = unit.submission.sequence_number.value;
 
+        // Extract new metadata fields
+        let app_uuid = Uuid::parse_str(&unit.application.id).unwrap_or_else(|_| Uuid::new_v4());
+        let app_code = &unit.application.code;
+        let app_num = &unit.application.application_number.code;
+        let applicant_name = &unit.applicant.sponsoring_organization.name;
+        let sub_code = &unit.submission.code;
+
         sqlx::query!(
             r#"
             INSERT INTO submission_units
-            (id, submission_id, sequence_number, code, code_system, status_code)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            (id, submission_id, sequence_number, code, code_system, status_code,
+             application_id_uuid, application_code, application_number, applicant_name, submission_code)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             "#,
             unit_id,
             submission_id,
             sequence_number as i32,
             unit.code,
             unit.code_system,
-            unit.status_code
+            unit.status_code,
+            app_uuid,
+            app_code,
+            app_num,
+            applicant_name,
+            sub_code
         )
         .execute(&mut *tx)
         .await?;
 
         // ---------------------------------------------------------
-        // LEVEL 2: Insert Documents
+        // LEVEL 2: Insert Documents (Unchanged)
         // ---------------------------------------------------------
         for doc in &unit.documents {
             let doc_id = Uuid::parse_str(&doc.id).unwrap_or_else(|_| Uuid::new_v4());
@@ -73,7 +86,7 @@ impl SubmissionRepository {
         }
 
         // ---------------------------------------------------------
-        // LEVEL 3: Insert Keyword Definitions
+        // LEVEL 3: Insert Keyword Definitions (Unchanged)
         // ---------------------------------------------------------
         if let Some(definitions) = &unit.keyword_definitions {
             for def in definitions {
@@ -95,7 +108,7 @@ impl SubmissionRepository {
         }
 
         // ---------------------------------------------------------
-        // LEVEL 4: Insert Context of Use
+        // LEVEL 4: Insert Context of Use (Unchanged)
         // ---------------------------------------------------------
         for cou in &unit.context_of_use {
             let cou_id = Uuid::parse_str(&cou.id).unwrap_or_else(|_| Uuid::new_v4());
@@ -126,9 +139,14 @@ impl SubmissionRepository {
 
     /// Reconstructs a full SubmissionUnit from the relational database
     pub async fn get_submission(&self, id: Uuid) -> Result<SubmissionUnit, sqlx::Error> {
-        // 1. Fetch Root
+        // 1. Fetch Root (Updated Select)
         let unit_rec = sqlx::query!(
-            r#"SELECT id, submission_id, sequence_number, code, code_system, status_code, created_at FROM submission_units WHERE id = $1"#,
+            r#"
+            SELECT id, submission_id, sequence_number, code, code_system, status_code, created_at,
+                   application_id_uuid, application_code, application_number, applicant_name, submission_code
+            FROM submission_units
+            WHERE id = $1
+            "#,
             id
         ).fetch_one(&self.pool).await?;
 
@@ -140,7 +158,7 @@ impl SubmissionRepository {
         .fetch_all(&self.pool)
         .await?
         .into_iter()
-        .map(Into::into) // <--- The Magic
+        .map(Into::into)
         .collect();
 
         // 3. Fetch Contexts
@@ -168,7 +186,7 @@ impl SubmissionRepository {
             Some(keywords_raw.into_iter().map(Into::into).collect())
         };
 
-        // 5. Assemble
+        // 5. Assemble (Updated with Real Data)
         Ok(SubmissionUnit {
             xmlns: "urn:hl7-org:v3".to_string(),
             xmlns_xsi: None,
@@ -177,29 +195,35 @@ impl SubmissionRepository {
             code: unit_rec.code,
             code_system: unit_rec.code_system,
             status_code: unit_rec.status_code,
+
+            // Real Submission Metadata
             submission: ectd_core::models::submission_unit::Submission {
                 id: unit_rec.submission_id.to_string(),
-                code: "seq-0001".to_string(),
-                code_system: "urn:oid:submission-code-system".to_string(),
+                code: unit_rec.submission_code,
+                code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
                 sequence_number: ectd_core::models::submission_unit::SequenceNumber {
                     value: unit_rec.sequence_number as u32,
                 },
             },
-            // Placeholders
+
+            // Real Application Metadata
             application: ectd_core::models::submission_unit::Application {
-                id: Uuid::nil().to_string(),
-                code: "placeholder".to_string(),
-                code_system: "urn:oid:placeholder".to_string(),
+                id: unit_rec.application_id_uuid.to_string(),
+                code: unit_rec.application_code,
+                code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
                 application_number: ectd_core::models::submission_unit::ApplicationNumber {
-                    code: "000000".to_string(),
-                    code_system: "urn:oid:placeholder".to_string(),
+                    code: unit_rec.application_number,
+                    code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
                 },
             },
+
+            // Real Applicant Metadata
             applicant: ectd_core::models::submission_unit::Applicant {
                 sponsoring_organization: ectd_core::models::submission_unit::SponsoringOrganization {
-                    name: "Stored in DB".to_string(),
+                    name: unit_rec.applicant_name,
                 },
             },
+
             context_of_use,
             documents,
             keyword_definitions,

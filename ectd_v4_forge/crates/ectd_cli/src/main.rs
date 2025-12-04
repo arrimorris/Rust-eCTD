@@ -29,6 +29,12 @@ enum Commands {
 
     /// Export a submission package from the database to disk
     Export(commands::export::ExportArgs),
+
+    /// Manage database migrations
+    Migrate(commands::migrate::MigrateArgs),
+
+    /// Initialize a new empty submission with metadata
+    Init(commands::init::InitArgs),
 }
 
 #[tokio::main]
@@ -64,6 +70,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .connect(&config.database_url)
                 .await?;
             commands::export::execute(pool, config, args).await?;
+        }
+        Commands::Migrate(args) => {
+            let pool = PgPoolOptions::new()
+                .max_connections(5)
+                .connect(&config.database_url)
+                .await?;
+            commands::migrate::execute(pool, args).await?;
+        }
+        Commands::Init(args) => {
+            let pool = PgPoolOptions::new()
+                .max_connections(5)
+                .connect(&config.database_url)
+                .await?;
+            commands::init::execute(pool, args).await?;
         }
     }
 
