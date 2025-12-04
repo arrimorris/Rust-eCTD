@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- LEVEL 1: The Container (Submission Unit)
 -- Reference: PDF Section 4.2.2 [cite: 13]
 -- ========================================================
-CREATE TABLE submission_units (
+CREATE TABLE IF NOT EXISTS submission_units (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- eCTD4-004: Must be UUID
 
     -- The "Logical" ID that persists across sequences for the same submission
@@ -27,7 +27,7 @@ CREATE TABLE submission_units (
 -- LEVEL 2: The Vocabulary (Keyword Definitions)
 -- Reference: PDF Section 4.2.14 [cite: 181]
 -- ========================================================
-CREATE TABLE keyword_definitions (
+CREATE TABLE IF NOT EXISTS keyword_definitions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     submission_unit_id UUID REFERENCES submission_units(id) ON DELETE CASCADE,
 
@@ -42,7 +42,7 @@ CREATE TABLE keyword_definitions (
 -- LEVEL 3: The Payload (Documents)
 -- Reference: PDF Section 4.2.13 [cite: 164]
 -- ========================================================
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- eCTD4-045
     submission_unit_id UUID REFERENCES submission_units(id) ON DELETE CASCADE,
 
@@ -64,7 +64,7 @@ CREATE TABLE documents (
 -- LEVEL 4: The Graph (Context of Use)
 -- Reference: PDF Section 4.2.5 [cite: 85]
 -- ========================================================
-CREATE TABLE contexts_of_use (
+CREATE TABLE IF NOT EXISTS contexts_of_use (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(), -- eCTD4-021
     submission_unit_id UUID REFERENCES submission_units(id) ON DELETE CASCADE,
 
@@ -89,7 +89,7 @@ CREATE TABLE contexts_of_use (
 -- LEVEL 5: Many-to-Many Keywords (The "Tags")
 -- Reference: PDF Section 4.2.8 [cite: 110]
 -- ========================================================
-CREATE TABLE context_keywords (
+CREATE TABLE IF NOT EXISTS context_keywords (
     context_id UUID REFERENCES contexts_of_use(id) ON DELETE CASCADE,
 
     code VARCHAR(64) NOT NULL, -- eCTD4-029
