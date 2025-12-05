@@ -4,6 +4,7 @@ members = [
     "crates/ectd_db",
     "crates/ectd_api",
     "crates/ectd_cli",
+    "crates/ectd_service",
 ]
 resolver = "2"
 
@@ -23,5 +24,12 @@ chrono = { version = "0.4.42", features = ["serde"] }
 sha2 = "0.10.9"
 hex = "0.4"
 dotenvy = "0.15.7"
+
+# AWS SDKs (Bleeding Edge)
+aws-config = { version = "1.5.10", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.65.0"
+
+# Workspace Members
 ectd_core = { path = "crates/ectd_core" }
 ectd_db = { path = "crates/ectd_db" }
+ectd_service = { path = "crates/ectd_service" }

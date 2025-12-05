@@ -1,0 +1,17 @@
+[package]
+name = "ectd_service"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ectd_core.workspace = true
+ectd_db.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+sha2.workspace = true
+hex.workspace = true
+aws-config.workspace = true
+aws-sdk-s3.workspace = true
