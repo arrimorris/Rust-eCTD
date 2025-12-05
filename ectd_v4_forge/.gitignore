@@ -5,3 +5,8 @@ target/
 Cargo.lock
 mappings/
 data/
+
+# Tauri Generated Schemas
+crates/ectd_app/gen/
+crates/ectd_app/ui/dist/
+crates/ectd_app/ui/node_modules/

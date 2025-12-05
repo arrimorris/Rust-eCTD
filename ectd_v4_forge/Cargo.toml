@@ -5,6 +5,7 @@ members = [
     "crates/ectd_api",
     "crates/ectd_cli",
     "crates/ectd_service",
+    "crates/ectd_app",
 ]
 resolver = "2"
 

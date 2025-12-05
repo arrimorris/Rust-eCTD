@@ -1,4 +1,5 @@
 pub mod documents;
+pub mod submission;
 
 use sqlx::PgPool;
 use aws_sdk_s3::Client as S3Client;
