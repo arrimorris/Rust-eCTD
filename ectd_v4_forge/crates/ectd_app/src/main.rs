@@ -54,6 +54,7 @@ async fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::init_submission,
+            commands::add_document,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

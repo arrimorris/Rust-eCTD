@@ -10,3 +10,6 @@ data/
 crates/ectd_app/gen/
 crates/ectd_app/ui/dist/
 crates/ectd_app/ui/node_modules/
+
+# Frontend Lockfile (Active Development)
+crates/ectd_app/ui/package-lock.json

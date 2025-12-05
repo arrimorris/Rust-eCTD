@@ -9,9 +9,10 @@ use ectd_db::repository::SubmissionRepository;
 #[derive(Debug)]
 pub struct InitSubmissionParams {
     pub app_number: String,
+    pub app_type: String, // Added field
     pub applicant_name: String,
     pub sequence_number: u32,
-    pub submission_code: String, // e.g., "0001"
+    pub submission_code: String,
 }
 
 impl EctdService {
@@ -38,7 +39,7 @@ impl EctdService {
 
             application: Application {
                 id: app_uuid.to_string(),
-                code: "application".to_string(), // Fixed for now
+                code: params.app_type, // Use parameter
                 code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
                 application_number: ApplicationNumber {
                     code: params.app_number,
