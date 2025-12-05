@@ -7,7 +7,7 @@ edition = "2024"
 clap.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
-uuid.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 dotenvy.workspace = true
 sqlx.workspace = true
 quick-xml.workspace = true

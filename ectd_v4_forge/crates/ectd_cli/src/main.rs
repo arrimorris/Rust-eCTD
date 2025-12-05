@@ -35,6 +35,9 @@ enum Commands {
 
     /// Initialize a new empty submission with metadata
     Init(commands::init::InitArgs),
+
+    /// Add a document to an existing submission
+    AddDoc(commands::add_doc::AddDocArgs),
 }
 
 #[tokio::main]
@@ -84,6 +87,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .connect(&config.database_url)
                 .await?;
             commands::init::execute(pool, args).await?;
+        }
+        Commands::AddDoc(args) => {
+            let pool = PgPoolOptions::new()
+                .max_connections(5)
+                .connect(&config.database_url)
+                .await?;
+            commands::add_doc::execute(pool, config, args).await?;
         }
     }
 

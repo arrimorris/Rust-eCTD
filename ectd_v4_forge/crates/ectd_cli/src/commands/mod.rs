@@ -15,3 +15,4 @@ pub enum Commands {
 }
 pub mod forge_data;
 pub mod export;
+pub mod add_doc;
