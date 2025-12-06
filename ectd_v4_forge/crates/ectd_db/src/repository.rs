@@ -18,6 +18,62 @@ impl SubmissionRepository {
     }
 
     /// The "Big Bang": Takes a full SubmissionUnit struct and persists it transactionally.
+    /// Surgically attaches a single document and context to an existing submission unit
+    /// This is the "Hands" of the system.
+    pub async fn add_document_to_submission(
+        &self,
+        unit_id: Uuid,
+        doc: &Document,
+        cou: &ContextOfUse,
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = self.pool.begin().await?;
+
+        // 1. Insert Document Metadata
+        // We use the ID from the struct, ensuring strict UUID compliance
+        sqlx::query!(
+            r#"
+            INSERT INTO documents
+            (id, submission_unit_id, xlink_href, checksum, checksum_algorithm, title)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            "#,
+            Uuid::parse_str(&doc.id).unwrap(), // Safe unwrap because we generated it
+            unit_id,
+            doc.text.reference.value,
+            doc.text.checksum,
+            doc.text.checksum_algorithm,
+            doc.title.value
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        // 2. Insert Context of Use (The Link)
+        // This connects the logic (Context) to the file (Document)
+        let doc_ref_id = cou
+            .document_reference
+            .as_ref()
+            .map(|d| Uuid::parse_str(&d.id.root).unwrap());
+
+        sqlx::query!(
+            r#"
+            INSERT INTO contexts_of_use
+            (id, submission_unit_id, code, code_system, status_code, priority_number, document_reference_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+            Uuid::parse_str(&cou.id).unwrap(),
+            unit_id,
+            cou.code,
+            cou.code_system,
+            cou.status_code,
+            cou.priority_number.value as i32,
+            doc_ref_id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
     pub async fn create_submission(&self, unit: &SubmissionUnit) -> Result<Uuid, sqlx::Error> {
         // 1. START THE TRANSACTION
         let mut tx = self.pool.begin().await?;

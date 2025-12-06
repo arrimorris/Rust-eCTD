@@ -7,7 +7,7 @@ edition = "2024"
 clap.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
-uuid.workspace = true
+uuid = { workspace = true, features = ["v4"] }
 dotenvy.workspace = true
 sqlx.workspace = true
 quick-xml.workspace = true
@@ -15,11 +15,12 @@ ectd_core.workspace = true
 ectd_db.workspace = true
 
 # New additions for S3/MinIO
-aws-config = { version = "1.1", features = ["behavior-version-latest"] }
-aws-sdk-s3 = "1.14"
+aws-config.workspace = true
+aws-sdk-s3.workspace = true
 csv = "1.3"
 serde_json = "1.0"
 serde.workspace = true
+ectd_service.workspace = true
 sha2.workspace = true
 hex.workspace = true
 futures = "0.3.31"
