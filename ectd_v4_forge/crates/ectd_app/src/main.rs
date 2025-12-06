@@ -28,13 +28,12 @@ async fn main() {
         .await
         .expect("Failed to connect to Database (Is Docker running?)");
 
-    // 3. AUTO-MIGRATE (The "Ease of Use" Magic)
-    // The app updates the DB schema on launch. No manual CLI needed.
-    println!("🔄 Running Migrations...");
-    sqlx::migrate!("../ectd_db/migrations")
-        .run(&pool)
+    // 3. ENSURE SCHEMA INTEGRITY (Build Order Architecture)
+    // The app carries the schema blueprint and enforces it on startup.
+    println!("🔄 Ensuring Schema Integrity...");
+    ectd_db::schema::rebuild_database(&pool)
         .await
-        .expect("Failed to migrate database");
+        .expect("Failed to apply schema");
 
     // 4. Connect to the "Vault" (MinIO)
     let region_provider = RegionProviderChain::default_provider().or_else(Region::new("us-east-1"));
@@ -55,6 +54,8 @@ async fn main() {
             commands::greet,
             commands::init_submission,
             commands::add_document,
+            commands::validate_submission,
+            commands::export_submission,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

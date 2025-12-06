@@ -1,5 +1,6 @@
 pub mod documents;
 pub mod submission;
+pub mod export;
 
 use sqlx::PgPool;
 use aws_sdk_s3::Client as S3Client;
