@@ -9,3 +9,4 @@ uuid.workspace = true
 tokio.workspace = true
 thiserror.workspace = true
 ectd_core.workspace = true
+rust-embed = "8.9.0"

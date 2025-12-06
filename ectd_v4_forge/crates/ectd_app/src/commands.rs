@@ -1,5 +1,6 @@
 use tauri::State;
 use ectd_service::{EctdService, documents::AddDocumentParams, submission::InitSubmissionParams};
+use ectd_core::{get_standard_validator, models::submission_unit::*};
 use uuid::Uuid;
 use std::path::PathBuf;
 
@@ -57,4 +58,42 @@ pub async fn add_document(
 
     let doc_id = service.attach_document(params).await.map_err(|e| e.to_string())?;
     Ok(doc_id.to_string())
+}
+
+#[tauri::command]
+pub async fn validate_submission(
+    service: State<'_, EctdService>,
+    submission_id: String,
+) -> Result<Vec<String>, String> {
+    let uuid = Uuid::parse_str(&submission_id).map_err(|e| e.to_string())?;
+
+    // 1. Fetch from DB
+    let repo = ectd_db::repository::SubmissionRepository::new(service.pool.clone());
+    let unit = repo.get_submission(uuid).await.map_err(|e| e.to_string())?;
+
+    // 2. Run Validation Engine
+    let validator = get_standard_validator();
+    let errors = validator.run(&unit);
+
+    // 3. Format Errors for UI
+    let report = errors.into_iter()
+        .map(|e| format!("[{}] {}: {}", e.severity, e.code, e.message))
+        .collect();
+
+    Ok(report)
+}
+
+#[tauri::command]
+pub async fn export_submission(
+    service: State<'_, EctdService>,
+    submission_id: String,
+    target_dir: String,
+) -> Result<String, String> {
+    let uuid = Uuid::parse_str(&submission_id).map_err(|e| e.to_string())?;
+    let path = PathBuf::from(target_dir);
+
+    service.export_submission(uuid, path).await
+        .map_err(|e| e.to_string())?;
+
+    Ok("Export Successful".to_string())
 }

@@ -17,8 +17,13 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
-      # Automatically runs our schema on first startup:
-      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+      # 1. Mount the Bootstrap Script (The Logic)
+      - ./docker/bootstrap.sh:/docker-entrypoint-initdb.d/00_bootstrap.sh
+
+      # 2. Mount the Source Schema (The Data)
+      # This allows the container to read your 00_build_order.sql directly
+      - ./crates/ectd_db/schema:/opt/schema
 
   # --------------------------------------------------------------------------
   # THE VAULT: MinIO (S3 Compatible Storage)
@@ -37,6 +42,34 @@ services:
     volumes:
       - minio_data:/data
 
+  # --------------------------------------------------------------------------
+  # THE WORKBENCH: Tauri App Builder
+  # --------------------------------------------------------------------------
+  app:
+    build:
+      context: .. # Assuming docker-compose is in ectd_v4_forge/
+      dockerfile: ectd_v4_forge/docker/app.Dockerfile
+    container_name: ectd_app_builder
+    volumes:
+      - ..:/app # Mount the entire project root into the container
+      # Persist cargo cache to speed up re-builds
+      - cargo_cache:/usr/local/cargo/registry
+      - target_cache:/app/target
+    environment:
+      # Connect to the sibling containers
+      - DATABASE_URL=postgres://${DB_USER:-postgres}:${DB_PASSWORD:-ectd_password}@db:5432/${DB_NAME:-ectd_v4}
+      - S3_ENDPOINT=http://storage:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_USER:-minio_admin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_PASSWORD:-minio_secret}
+      - AWS_REGION=us-east-1
+      # GUI Display forwarding (Linux hosts only)
+      - DISPLAY=${DISPLAY:-:0}
+    depends_on:
+      - db
+      - storage
+
 volumes:
   pg_data:
   minio_data:
+  cargo_cache:
+  target_cache:

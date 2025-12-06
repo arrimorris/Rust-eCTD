@@ -1,7 +1,7 @@
 pub mod ingest;
 pub mod import_standard;
 pub mod validate;
-pub mod migrate;
+pub mod rebuild;
 pub mod init;
 use clap::Subcommand;
 
