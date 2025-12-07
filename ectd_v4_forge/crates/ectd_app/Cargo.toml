@@ -21,3 +21,5 @@ aws-sdk-s3.workspace = true
 ectd_core.workspace = true
 ectd_db.workspace = true
 ectd_service.workspace = true
+bollard = "0.19.4"
+futures = "0.3.31"

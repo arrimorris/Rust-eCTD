@@ -1,8 +1,12 @@
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use ectd_service::{EctdService, documents::AddDocumentParams, submission::InitSubmissionParams};
 use ectd_core::{get_standard_validator, models::submission_unit::*};
 use uuid::Uuid;
 use std::path::PathBuf;
+use futures::StreamExt;
+// Removed pin_mut import
+use crate::state::AppState;
+use bollard::container::{InspectContainerOptions, StartContainerOptions};
 
 // Basic test command
 #[tauri::command]
@@ -85,6 +89,7 @@ pub async fn validate_submission(
 
 #[tauri::command]
 pub async fn export_submission(
+    app: AppHandle,
     service: State<'_, EctdService>,
     submission_id: String,
     target_dir: String,
@@ -92,8 +97,36 @@ pub async fn export_submission(
     let uuid = Uuid::parse_str(&submission_id).map_err(|e| e.to_string())?;
     let path = PathBuf::from(target_dir);
 
-    service.export_submission(uuid, path).await
-        .map_err(|e| e.to_string())?;
+    let mut stream = service.export_submission_stream(uuid, path);
+    // Removed pin_mut!
 
-    Ok("Export Successful".to_string())
+    while let Some(progress_result) = stream.next().await {
+        match progress_result {
+            Ok(progress) => {
+                app.emit("export-progress", progress).map_err(|e| e.to_string())?;
+            },
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+
+    Ok("Done".to_string())
+}
+
+#[tauri::command]
+pub async fn ensure_infrastructure(state: State<'_, AppState>) -> Result<String, String> {
+    let docker = &state.docker;
+
+    // Check if DB is running
+    match docker.inspect_container("ectd_db", None::<InspectContainerOptions>).await {
+        Ok(c) => {
+            if !c.state.unwrap().running.unwrap_or(false) {
+                // It exists but is stopped -> START IT
+                docker.start_container("ectd_db", None::<StartContainerOptions<String>>).await.map_err(|e| e.to_string())?;
+                return Ok("Restarted Database".to_string());
+            }
+        },
+        Err(_) => return Err("Database container missing! Run docker-compose up.".to_string()),
+    }
+
+    Ok("System Healthy".to_string())
 }
