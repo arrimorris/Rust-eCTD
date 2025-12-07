@@ -2,12 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod state; // Import the new state module
 
 use sqlx::postgres::PgPoolOptions;
 use ectd_service::EctdService;
 use aws_sdk_s3::Client as S3Client;
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::config::Region;
+use crate::state::AppState; // Use the AppState
 
 #[tokio::main]
 async fn main() {
@@ -44,18 +46,21 @@ async fn main() {
         .build();
     let s3_client = S3Client::from_conf(s3_config);
 
-    // 5. Initialize Service
+    // 5. Initialize Service & State
     let service = EctdService::new(pool, s3_client, s3_bucket);
+    let app_state = AppState::new();
 
     // 6. Launch Tauri
     tauri::Builder::default()
-        .manage(service) // Inject the service into Tauri state
+        .manage(service) // Inject the Business Logic
+        .manage(app_state) // Inject the System Logic
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::init_submission,
             commands::add_document,
             commands::validate_submission,
             commands::export_submission,
+            commands::ensure_infrastructure, // Register the new command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

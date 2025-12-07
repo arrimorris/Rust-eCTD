@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 // 5. The Physical Document
 // Reference: PDF Section 4.2.13
 // ---------------------------------------------------------------------------
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Document {
     #[serde(rename = "@id")]
     pub id: String, // UUID
@@ -18,13 +18,13 @@ pub struct Document {
     pub text: DocumentText,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DocumentTitle {
     #[serde(rename = "@value")]
     pub value: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DocumentText {
     // Rule eCTD4-050: Document Path
     #[serde(rename = "reference")]
@@ -41,7 +41,7 @@ pub struct DocumentText {
     pub media_type: String, // "application/pdf"
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DocumentReferencePath {
     #[serde(rename = "@value")]
     pub value: String, // "m1/us/cover.pdf"

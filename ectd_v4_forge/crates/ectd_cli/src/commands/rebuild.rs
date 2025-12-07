@@ -14,7 +14,9 @@ pub async fn execute(pool: PgPool, args: RebuildArgs) -> Result<(), Box<dyn std:
 
     if args.reset {
         println!("🔥 Reset requested. Dropping public schema...");
-        sqlx::query!("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+        sqlx::query!("DROP SCHEMA public CASCADE")
+            .execute(&pool).await?;
+        sqlx::query!("CREATE SCHEMA public")
             .execute(&pool).await?;
     }
 
