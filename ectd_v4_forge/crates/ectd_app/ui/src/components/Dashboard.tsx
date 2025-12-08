@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event"; // <--- The Listener
-import { FilePlus, FileText, ShieldCheck, Download, AlertTriangle, CheckCircle, Activity, Server } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import { FilePlus, ShieldCheck, Download, AlertTriangle, CheckCircle, Activity, Server } from "lucide-react";
 
 interface DashboardProps {
   submissionId: string;
   onExit: () => void;
 }
 
-// Matches Rust 'ExportProgress' struct
 interface ExportProgress {
   fileName: string;
   processedFiles: number;
@@ -23,23 +22,17 @@ export default function Dashboard({ submissionId, onExit }: DashboardProps) {
   const [title, setTitle] = useState("");
   const [logs, setLogs] = useState<string[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[] | null>(null);
-
-  // Progress State
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [systemHealth, setSystemHealth] = useState<"checking" | "ok" | "error">("checking");
 
   const addLog = (msg: string) => setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
 
-  // 1. SELF-HEALING ON MOUNT
   useEffect(() => {
     checkSystem();
-
-    // 2. SETUP EVENT LISTENER
     const unlisten = listen<ExportProgress>('export-progress', (event) => {
       setExportProgress(event.payload);
     });
-
     return () => {
       unlisten.then(f => f());
     };
@@ -94,9 +87,7 @@ export default function Dashboard({ submissionId, onExit }: DashboardProps) {
       setIsExporting(true);
       const targetDir = "/tmp/ectd_export_" + submissionId.slice(0,8);
       addLog(`📦 Starting Stream to: ${targetDir}`);
-
       await invoke("export_submission", { submissionId, targetDir });
-
       addLog("🎉 Export Stream Complete!");
     } catch (err) {
       addLog(`❌ Export Failed: ${err}`);
@@ -108,11 +99,7 @@ export default function Dashboard({ submissionId, onExit }: DashboardProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      {/* LEFT COLUMN */}
       <div className="lg:col-span-2 space-y-6">
-
-        {/* Status Card */}
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -127,7 +114,6 @@ export default function Dashboard({ submissionId, onExit }: DashboardProps) {
           <button onClick={onExit} className="text-sm text-slate-400 hover:text-slate-600">Close Session</button>
         </div>
 
-        {/* Add Document */}
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 bg-indigo-100 rounded-lg"><FilePlus className="w-5 h-5 text-indigo-600" /></div>
@@ -147,14 +133,12 @@ export default function Dashboard({ submissionId, onExit }: DashboardProps) {
           </div>
         </div>
 
-        {/* Exit Doors */}
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <div className="p-2 bg-emerald-100 rounded-lg"><ShieldCheck className="w-5 h-5 text-emerald-600" /></div>
             <h3 className="font-semibold text-slate-800">Finalize & Ship</h3>
           </div>
 
-          {/* Progress Bar (Only visible during export) */}
           {isExporting && exportProgress && (
             <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div className="flex justify-between text-xs mb-1 font-medium text-slate-600">
@@ -177,7 +161,6 @@ export default function Dashboard({ submissionId, onExit }: DashboardProps) {
             </button>
           </div>
 
-          {/* Validation Results */}
           {validationErrors !== null && (
             <div className={`mt-4 p-4 rounded-lg text-sm border ${validationErrors.length === 0 ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"}`}>
               {validationErrors.length === 0 ? (
@@ -186,11 +169,10 @@ export default function Dashboard({ submissionId, onExit }: DashboardProps) {
                 <ul className="list-disc pl-4 space-y-1">{validationErrors.map((err, i) => <li key={i}>{err}</li>)}</ul>
               )}
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Logs */}
       <div className="bg-slate-900 text-slate-300 p-4 rounded-xl shadow-inner h-[600px] overflow-y-auto font-mono text-xs flex flex-col">
         <div className="flex items-center gap-2 mb-4 text-slate-400 border-b border-slate-800 pb-2">
           <Activity className="w-4 h-4" /><span>System Log</span>
