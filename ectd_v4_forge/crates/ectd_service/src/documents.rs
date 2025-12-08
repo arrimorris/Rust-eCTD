@@ -23,6 +23,10 @@ pub struct AddDocumentParams {
 
 impl EctdService {
     pub async fn attach_document(&self, params: AddDocumentParams) -> Result<Uuid> {
+        // 0. SELF-HEALING: Ensure Vault is ready
+        self.ensure_bucket().await
+            .context("Failed to initialize storage backend")?;
+
         // 1. Checksum (Streaming from disk)
         let mut file = File::open(&params.file_path).await
             .context(format!("Failed to open file: {:?}", params.file_path))?;
