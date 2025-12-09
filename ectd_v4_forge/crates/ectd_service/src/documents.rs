@@ -9,9 +9,11 @@ use aws_sdk_s3::primitives::ByteStream;
 use ectd_core::models::{
     document::{Document, DocumentTitle, DocumentText, DocumentReferencePath},
     context_of_use::{ContextOfUse, PriorityNumber, DocumentReference, DocumentIdRef},
+    submission_unit::{SubmissionUnit, Submission, Application, Applicant, SequenceNumber, ApplicationNumber, SponsoringOrganization},
 };
 // Import the new helper
 use ectd_core::resolve_folder_path;
+use ectd_core::validation::{ValidationEngine, rules_pdf::RuleEctd4_533};
 use ectd_db::repository::SubmissionRepository;
 
 #[derive(Debug)]
@@ -41,6 +43,70 @@ impl EctdService {
             hasher.update(&buffer[..n]);
         }
         let hash = hex::encode(hasher.finalize());
+
+        // 1.5 VALIDATION (The Shield)
+        // Check PDF integrity before uploading.
+        // We assume "application/pdf" for now, but in reality we should check extension.
+        if let Some(ext) = params.file_path.extension() {
+            if ext.to_string_lossy().to_lowercase() == "pdf" {
+                // Construct a minimal dummy unit to satisfy the Validator signature
+                let validation_doc = Document {
+                    id: "temp-validation-id".to_string(),
+                    title: DocumentTitle { value: params.title.clone() },
+                    text: DocumentText {
+                        // Crucial: Use LOCAL path for validation so lopdf can find it
+                        reference: DocumentReferencePath { value: params.file_path.to_string_lossy().to_string() },
+                        checksum: hash.clone(),
+                        checksum_algorithm: "SHA256".to_string(),
+                        media_type: "application/pdf".to_string(),
+                    },
+                };
+
+                let dummy_unit = SubmissionUnit {
+                    id: Uuid::new_v4().to_string(),
+                    code: "validation-wrapper".to_string(),
+                    code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
+                    status_code: "active".to_string(),
+                    xmlns: "urn:hl7-org:v3".to_string(),
+                    xmlns_xsi: None,
+                    schema_location: None,
+                    submission: Submission {
+                        id: Uuid::new_v4().to_string(),
+                        code: "seq-0000".to_string(),
+                        code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
+                        sequence_number: SequenceNumber { value: 0 },
+                    },
+                    application: Application {
+                        id: Uuid::new_v4().to_string(),
+                        code: "nda".to_string(),
+                        code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
+                        application_number: ApplicationNumber {
+                            code: "000000".to_string(),
+                            code_system: "urn:oid:2.16.840.1.113883.3.989.2.2.1".to_string(),
+                        }
+                    },
+                    applicant: Applicant {
+                        sponsoring_organization: SponsoringOrganization { name: "Validation".to_string() }
+                    },
+                    context_of_use: vec![],
+                    keyword_definitions: None,
+                    documents: vec![validation_doc],
+                };
+
+                let engine = ValidationEngine::new()
+                    .add_rule(RuleEctd4_533);
+
+                let errors = engine.run(&dummy_unit);
+
+                // Block on High Errors (Severity "High Error")
+                for err in errors {
+                    if err.severity.contains("High Error") {
+                         anyhow::bail!("PDF Validation Failed: {} (Code: {})", err.message, err.code);
+                    }
+                    // We could log warnings here
+                }
+            }
+        }
 
         // 2. Identities
         let doc_id = Uuid::new_v4();
