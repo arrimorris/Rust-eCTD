@@ -10,6 +10,8 @@ use ectd_core::models::{
     document::{Document, DocumentTitle, DocumentText, DocumentReferencePath},
     context_of_use::{ContextOfUse, PriorityNumber, DocumentReference, DocumentIdRef},
 };
+// Import the new helper
+use ectd_core::resolve_folder_path;
 use ectd_db::repository::SubmissionRepository;
 
 #[derive(Debug)]
@@ -57,8 +59,14 @@ impl EctdService {
             .context("S3 Upload Failed")?;
 
         // 4. Construct
-        let filename = params.file_path.file_name().unwrap().to_string_lossy();
-        let ref_path = format!("m1/us/{}", filename); // Hardcoded path for now
+        let filename = params.file_path.file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+
+        // Use the resolver to determine the correct eCTD folder
+        let folder = resolve_folder_path(&params.context_code);
+        let ref_path = format!("{}/{}", folder, filename);
 
         let doc = Document {
             id: doc_id.to_string(),

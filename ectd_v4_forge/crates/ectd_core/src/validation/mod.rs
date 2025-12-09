@@ -2,6 +2,7 @@ use crate::models::submission_unit::SubmissionUnit;
 use serde::Serialize;
 
 pub mod rules;
+pub mod rules_pdf;
 
 // The structure of a failure
 #[derive(Debug, Serialize, Clone)]
