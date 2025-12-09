@@ -1,7 +1,7 @@
 pub mod models;
 pub mod validation;
 
-use validation::{ValidationEngine, rules};
+use validation::{ValidationEngine, rules, rules_pdf};
 
 pub fn get_standard_validator() -> ValidationEngine {
     ValidationEngine::new()
@@ -9,6 +9,7 @@ pub fn get_standard_validator() -> ValidationEngine {
         .add_rule(rules::RuleEctd4_006)
         .add_rule(rules::RuleEctd4_013)
         .add_rule(rules::RuleEctd4_048)
+        .add_rule(rules_pdf::RuleEctd4_533)
 }
 
 /// Maps an eCTD v4.0 Context of Use Code to the standard folder path.
