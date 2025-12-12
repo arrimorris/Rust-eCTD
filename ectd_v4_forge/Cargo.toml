@@ -1,11 +1,11 @@
 [workspace]
 members = [
-    "crates/ectd_core",
-    "crates/ectd_db",
-    "crates/ectd_api",
-    "crates/ectd_cli",
-    "crates/ectd_service",
-    "crates/ectd_app",
+    "crates/trailblazer_db",
+    "crates/trailblazer_core",
+    "crates/trailblazer_compliance",
+    "crates/trailblazer_api",
+    "crates/trailblazer_cli",
+    "crates/trailblazer_app",
 ]
 resolver = "2"
 
@@ -25,12 +25,15 @@ chrono = { version = "0.4.42", features = ["serde"] }
 sha2 = "0.10.9"
 hex = "0.4"
 dotenvy = "0.15.7"
+time = { version = "0.3", features = ["serde", "macros"] }
 
 # AWS SDKs (Bleeding Edge)
 aws-config = { version = "1.5.10", features = ["behavior-version-latest"] }
 aws-sdk-s3 = "1.65.0"
 
 # Workspace Members
-ectd_core = { path = "crates/ectd_core" }
-ectd_db = { path = "crates/ectd_db" }
-ectd_service = { path = "crates/ectd_service" }
+trailblazer_db = { path = "crates/trailblazer_db" }
+trailblazer_core = { path = "crates/trailblazer_core" }
+trailblazer_compliance = { path = "crates/trailblazer_compliance" }
+trailblazer_api = { path = "crates/trailblazer_api" }
+trailblazer_cli = { path = "crates/trailblazer_cli" }

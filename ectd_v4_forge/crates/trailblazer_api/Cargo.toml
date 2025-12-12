@@ -1,0 +1,16 @@
+[package]
+name = "trailblazer_api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+trailblazer_compliance.workspace = true
+trailblazer_db.workspace = true
+trailblazer_core.workspace = true
+uuid = { workspace = true, features = ["v7", "serde"] }
+sqlx = { workspace = true, features = ["runtime-tokio-rustls", "postgres", "uuid"] }

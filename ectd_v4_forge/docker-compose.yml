@@ -23,7 +23,7 @@ services:
 
       # 2. Mount the Source Schema (The Data)
       # This allows the container to read your 00_build_order.sql directly
-      - ./crates/ectd_db/schema:/opt/schema
+      - ./crates/trailblazer_db/schema:/opt/schema
 
   # --------------------------------------------------------------------------
   # THE VAULT: MinIO (S3 Compatible Storage)

@@ -1,0 +1,13 @@
+[package]
+name = "trailblazer_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trailblazer_db.workspace = true
+serde.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
