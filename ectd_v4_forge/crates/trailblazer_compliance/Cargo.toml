@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-trailblazer_db.workspace = true
+trailblazer_db = { path = "../trailblazer_db" }
 serde.workspace = true
 uuid.workspace = true
 thiserror.workspace = true
@@ -19,3 +19,4 @@ anyhow.workspace = true
 tracing.workspace = true
 regex = "1"
 lopdf = "0.34"
+time.workspace = true
