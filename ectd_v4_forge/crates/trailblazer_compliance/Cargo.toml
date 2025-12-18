@@ -1,0 +1,22 @@
+[package]
+name = "trailblazer_compliance"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+trailblazer_db = { path = "../trailblazer_db" }
+serde.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+quick-xml.workspace = true
+sha2.workspace = true
+hex.workspace = true
+chrono.workspace = true
+aws-sdk-s3.workspace = true
+aws-config.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+regex = "1"
+lopdf = "0.34"
+time.workspace = true
