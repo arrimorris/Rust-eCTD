@@ -1,4 +1,7 @@
 pub mod error;
+pub mod models;
 pub mod repository;
 pub mod schema;
-pub mod models;
+
+// Re-export common types for convenience
+pub use repository::SubmissionRepository;
